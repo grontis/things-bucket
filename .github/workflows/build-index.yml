@@ -1,0 +1,32 @@
+name: Rebuild index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.html"
+      - "generate_index.py"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Prevent an infinite loop when the workflow commits index.html
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so per-file "last updated" dates work
+
+      - name: Generate index.html
+        run: python3 generate_index.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "chore: rebuild index"
+          git push
