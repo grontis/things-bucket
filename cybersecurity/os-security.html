@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operating System Security · Module 04</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0A0C11;
+    --ink-2:#0E1119;
+    --ink-3:#141925;
+    --line:#212836;
+    --line-2:#2c3547;
+    --fg:#E6E9EF;
+    --fg-dim:#AEB6C4;
+    --fg-mute:#6E7789;
+    --kernel:#F2A93B;      /* ring 0 / privilege */
+    --kernel-deep:#E8890B;
+    --user:#4FB6D6;        /* ring 3 / userland */
+    --attack:#E56A66;      /* exploitation */
+    --defense:#5BD1A0;     /* mitigation */
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --disp:'Space Grotesk',var(--sans);
+    --maxw:820px;
+    --nav-w:288px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--ink);color:var(--fg);
+    font-family:var(--sans);font-size:17px;line-height:1.72;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  ::selection{background:var(--kernel);color:#100b00}
+  a{color:var(--user);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .shell{display:flex;max-width:1240px;margin:0 auto}
+  main{flex:1;min-width:0;padding:0 clamp(20px,5vw,66px) 130px}
+
+  /* ---- side nav / table of contents ---- */
+  .nav{
+    width:var(--nav-w);flex:0 0 var(--nav-w);
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+    padding:34px 24px 40px;border-right:1px solid var(--line);background:var(--ink-2);
+  }
+  .nav__brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+    color:var(--kernel);text-transform:uppercase}
+  .nav__sub{font-family:var(--mono);font-size:11px;color:var(--fg-mute);
+    margin:6px 0 24px;line-height:1.6}
+  .nav__label{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--fg-mute);margin:0 0 10px;padding-left:2px}
+  .nav a{display:block;color:var(--fg-mute);font-size:13.5px;padding:5px 0 5px 14px;
+    border-left:2px solid transparent;line-height:1.35;transition:color .15s,border-color .15s}
+  .nav a:hover{color:var(--fg-dim);text-decoration:none}
+  .nav a .hx{font-family:var(--mono);font-size:11px;color:var(--line-2);margin-right:9px}
+  .nav a.active{color:var(--fg);border-left-color:var(--kernel)}
+  .nav a.active .hx{color:var(--kernel)}
+  .nav__toggle{display:none}
+  .nav__scrim{display:none}
+
+  /* ---- title block ---- */
+  .titleblock{padding:clamp(56px,9vh,96px) 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--fg-mute);margin-bottom:20px}
+  .eyebrow b{color:var(--kernel);font-weight:500}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(2.3rem,5.2vw,3.6rem);
+    line-height:1.05;letter-spacing:-.02em;margin:0 0 22px;color:#fff}
+  .abstract{font-size:clamp(1.02rem,2vw,1.16rem);color:var(--fg-dim);max-width:var(--maxw);line-height:1.62}
+  .abstract + .abstract{margin-top:14px}
+
+  /* ---- figures ---- */
+  figure{margin:30px 0;max-width:var(--maxw)}
+  figure.fig-ring{max-width:500px;margin-left:auto;margin-right:auto}
+  figure svg{width:100%;height:auto;display:block}
+  figcaption{font-family:var(--mono);font-size:12px;color:var(--fg-mute);
+    line-height:1.6;margin-top:14px;padding-left:2px;border-left:2px solid var(--line-2);padding-left:12px}
+  figcaption b{color:var(--fg-dim);font-weight:500}
+
+  /* ---- sections ---- */
+  section{scroll-margin-top:20px;padding-top:52px;margin-top:52px;border-top:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:14px}
+  .sec-addr{font-family:var(--mono);font-size:13px;color:var(--kernel);font-weight:500;flex:0 0 auto;padding-top:7px}
+  .sec-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--fg-mute);margin:0 0 3px}
+  h2{font-family:var(--disp);font-weight:600;font-size:clamp(1.5rem,3.1vw,2.05rem);
+    letter-spacing:-.015em;line-height:1.14;margin:0;color:#fff}
+  h3{font-family:var(--disp);font-weight:600;font-size:1.22rem;letter-spacing:-.005em;
+    margin:36px 0 10px;color:#fff}
+  h4{font-family:var(--sans);font-weight:600;font-size:1rem;margin:24px 0 6px;color:var(--fg)}
+  p{margin:0 0 16px;max-width:var(--maxw)}
+  .lead{font-size:1.06rem;color:var(--fg-dim);max-width:var(--maxw)}
+  strong{color:#fff;font-weight:600}
+  em.term{font-style:normal;color:var(--kernel);font-weight:500}
+  ul,ol{max-width:var(--maxw);padding-left:20px;margin:0 0 16px}
+  li{margin:0 0 8px}
+  li::marker{color:var(--fg-mute)}
+  code{font-family:var(--mono);font-size:.85em;background:var(--ink-3);
+    border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:#E9D6AE;word-break:break-word}
+
+  /* ---- code listings ---- */
+  .listing{margin:22px 0;max-width:var(--maxw)}
+  .listing .code{background:#090B10;border:1px solid var(--line-2);border-radius:5px;overflow:hidden}
+  .listing .lbar{display:flex;align-items:center;gap:9px;padding:8px 14px;
+    background:var(--ink-3);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--fg-mute);letter-spacing:.03em}
+  .listing .lbar::before{content:"";width:7px;height:7px;background:var(--kernel);border-radius:1px;flex:0 0 auto}
+  .listing pre{margin:0;padding:15px 18px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.72;color:#C9D3E0}
+  .listing figcaption{border-left:none;padding-left:2px;margin-top:10px}
+  .code .c{color:var(--fg-mute)}
+  .code .p{color:var(--kernel)}
+  .code .s{color:var(--defense)}
+  .code .k{color:var(--user)}
+  .code .r{color:var(--attack)}
+
+  /* ---- notes / callouts ---- */
+  .note{border:1px solid var(--line-2);border-left-width:3px;border-radius:5px;
+    padding:16px 20px 3px;margin:22px 0;max-width:var(--maxw);background:var(--ink-2)}
+  .note .nt{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;margin-bottom:6px;font-weight:700;color:var(--fg-dim)}
+  .note p:last-child{margin-bottom:13px}
+  .note--attack{border-left-color:var(--attack)} .note--attack .nt{color:var(--attack)}
+  .note--defense{border-left-color:var(--defense)} .note--defense .nt{color:var(--defense)}
+  .note--hist{border-left-color:var(--user)} .note--hist .nt{color:var(--user)}
+  .note--key{border-left-color:var(--kernel)} .note--key .nt{color:var(--kernel)}
+
+  /* ---- definition tables ---- */
+  .defs{max-width:var(--maxw);margin:20px 0;border-top:1px solid var(--line)}
+  .defs .row{display:grid;grid-template-columns:200px 1fr;gap:22px;
+    padding:13px 0;border-bottom:1px solid var(--line)}
+  .defs .row dt{font-family:var(--mono);font-size:12.5px;color:var(--kernel);font-weight:500;line-height:1.5}
+  .defs .row dd{margin:0;color:var(--fg-dim);font-size:.96rem}
+  .defs .row dd strong{color:var(--fg)}
+
+  /* ---- comparison cards ---- */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0;max-width:var(--maxw)}
+  .col-card{border:1px solid var(--line);border-radius:6px;padding:16px 18px 4px;background:var(--ink-2)}
+  .col-card h4{margin-top:0}
+  .col-card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-mute)}
+
+  /* ---- memory map figure ---- */
+  .memmap{max-width:430px;margin:0;border:1px solid var(--line-2);border-radius:6px;
+    overflow:hidden;font-family:var(--mono);font-size:12.5px}
+  .memmap .seg{padding:11px 15px;border-bottom:1px solid var(--line);display:flex;
+    justify-content:space-between;gap:12px;align-items:center}
+  .memmap .seg:last-child{border-bottom:none}
+  .memmap .seg .a{color:var(--fg-mute);font-size:11px}
+  .memmap .seg .n{color:var(--fg)}
+  .memmap .seg .g{color:var(--fg-mute);font-size:10.5px}
+  .memmap .seg--k{background:linear-gradient(90deg,rgba(242,169,59,.10),transparent);border-left:3px solid var(--kernel)}
+  .memmap .seg--u{border-left:3px solid var(--user)}
+  .memmap .seg--grow{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(110,119,137,.05) 6px,rgba(110,119,137,.05) 12px)}
+
+  hr.soft{border:none;border-top:1px solid var(--line);margin:32px 0;max-width:var(--maxw)}
+
+  .refs{max-width:var(--maxw);margin-top:64px;padding-top:26px;border-top:1px solid var(--line-2);
+    color:var(--fg-mute);font-size:14px}
+  .refs .f-mono{font-family:var(--mono);font-size:12px;color:var(--fg-mute)}
+
+  .progress{position:fixed;top:0;left:0;height:2px;background:var(--kernel);z-index:50;width:0}
+
+  @media (max-width:1000px){
+    .nav{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);
+      transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.6)}
+    .nav.open{transform:translateX(0)}
+    .nav__scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:35}
+    .nav__toggle{display:flex;align-items:center;gap:9px;position:fixed;top:14px;left:14px;z-index:45;
+      font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--fg);
+      background:var(--ink-3);border:1px solid var(--line-2);border-radius:5px;padding:9px 13px;cursor:pointer}
+    .nav__toggle .bars{display:inline-flex;flex-direction:column;gap:3px}
+    .nav__toggle .bars i{width:15px;height:2px;background:var(--kernel);display:block}
+    main{padding-top:56px}
+    .shell{display:block}
+  }
+  @media (max-width:620px){
+    body{font-size:16px}
+    .cols{grid-template-columns:1fr}
+    .defs .row{grid-template-columns:1fr;gap:3px}
+    .defs .row dt{color:var(--kernel)}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="nav__scrim" id="scrim"></div>
+<button class="nav__toggle" id="navToggle" aria-label="Toggle contents"><span class="bars"><i></i><i></i><i></i></span> CONTENTS</button>
+
+<div class="shell">
+<nav class="nav" id="nav">
+  <div class="nav__brand">Module 04</div>
+  <div class="nav__sub">Operating System Security<br>Cybersecurity crash course</div>
+  <p class="nav__label">Contents</p>
+  <a href="#s00"><span class="hx">0x00</span>The OS as a trust boundary</a>
+  <a href="#s01"><span class="hx">0x01</span>Privilege rings and CPU modes</a>
+  <a href="#s02"><span class="hx">0x02</span>The kernel</a>
+  <a href="#s03"><span class="hx">0x03</span>System calls</a>
+  <a href="#s04"><span class="hx">0x04</span>Virtual memory and isolation</a>
+  <a href="#s05"><span class="hx">0x05</span>Memory-corruption exploitation</a>
+  <a href="#s06"><span class="hx">0x06</span>Access control models</a>
+  <a href="#s07"><span class="hx">0x07</span>Unix permissions and privesc</a>
+  <a href="#s08"><span class="hx">0x08</span>The Windows security model</a>
+  <a href="#s09"><span class="hx">0x09</span>Linux hardening primitives</a>
+  <a href="#s0a"><span class="hx">0x0A</span>Authentication and credentials</a>
+  <a href="#s0b"><span class="hx">0x0B</span>Boot chain and firmware</a>
+  <a href="#s0c"><span class="hx">0x0C</span>Storage encryption</a>
+  <a href="#s0d"><span class="hx">0x0D</span>Rootkits and persistence</a>
+  <a href="#s0e"><span class="hx">0x0E</span>Virtualization and containers</a>
+  <a href="#s0f"><span class="hx">0x0F</span>Logging and forensics</a>
+  <a href="#s10"><span class="hx">0x10</span>Hardening principles</a>
+</nav>
+
+<main>
+<div class="titleblock">
+  <p class="eyebrow">Cybersecurity crash course <b>/</b> Module 04</p>
+  <h1>Operating System Security</h1>
+  <p class="abstract">An operating system shares one set of hardware among many programs that do not trust each other. Every confidentiality and integrity property of a running system derives from how the operating system establishes separation between those programs, between users, and between itself and the code it executes.</p>
+  <p class="abstract">This module describes the mechanisms that enforce those boundaries and the techniques used to defeat them. It proceeds from the hardware privilege model up through the kernel, its interfaces, and process memory, then across the access-control, authentication, boot, and persistence layers that make up a complete system.</p>
+
+  <figure class="fig-ring" aria-label="x86 protection ring diagram">
+    <svg viewBox="0 0 600 600" role="img">
+      <defs>
+        <radialGradient id="core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#F7C06B"/>
+          <stop offset="65%" stop-color="#F2A93B"/>
+          <stop offset="100%" stop-color="#E8890B"/>
+        </radialGradient>
+      </defs>
+      <circle cx="300" cy="300" r="270" fill="none" stroke="#4FB6D6" stroke-width="34" opacity=".26"/>
+      <circle cx="300" cy="300" r="222" fill="none" stroke="#6D8FB0" stroke-width="34" opacity=".30"/>
+      <circle cx="300" cy="300" r="174" fill="none" stroke="#B98A55" stroke-width="34" opacity=".44"/>
+      <circle cx="300" cy="300" r="118" fill="url(#core)"/>
+      <text x="300" y="293" text-anchor="middle" font-family="'Space Grotesk',sans-serif" font-size="29" font-weight="700" fill="#160E00">RING 0</text>
+      <text x="300" y="318" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12.5" fill="#3a2600">kernel</text>
+      <text x="300" y="53"  text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12.5" fill="#4FB6D6">RING 3 · applications</text>
+      <text x="300" y="101" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11.5" fill="#6D8FB0">RING 2</text>
+      <text x="300" y="149" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11.5" fill="#B98A55">RING 1</text>
+    </svg>
+    <figcaption><b>Figure 0.1.</b> The x86 protection rings. Ring 0 (kernel mode) is the most privileged; Ring 3 (user mode) the least. Rings 1 and 2 exist in the architecture but are unused by most operating systems, which run only in Rings 0 and 3. Color indicates privilege level throughout this module.</figcaption>
+  </figure>
+</div>
+
+<section id="s00">
+  <div class="sec-head">
+    <span class="sec-addr">0x00</span>
+    <div><p class="sec-kicker">Threat model</p><h2>The OS as a trust boundary</h2></div>
+  </div>
+  <p class="lead">A computer's hardware executes whatever instructions the program counter references and returns whatever memory contents are requested. Nothing in the hardware alone prevents one program from reading another's memory or overwriting a file it does not own. Those restrictions exist because the operating system interposes on every access to hardware, and the CPU grants it the privilege to do so.</p>
+
+  <p>In access-control theory, this ideal component is a <em class="term">reference monitor</em>: a mechanism that mediates every access to every resource, cannot be bypassed, cannot be tampered with, and is small enough to be verified. Production operating systems meet none of these criteria fully. A modern kernel is tens of millions of lines of code, which is neither small nor formally verifiable. Operating system security is largely the study of the gap between this ideal and the implementation.</p>
+
+  <h3>Three properties an OS must provide</h3>
+  <div class="defs">
+    <div class="row"><dt>Isolation</dt><dd>Process A must not read or modify process B's memory, files, or execution state without authorization. Virtual memory, privilege rings, and namespaces enforce this.</dd></div>
+    <div class="row"><dt>Mediation</dt><dd>Access to a real resource (a file, a network socket, another process) is decided by the OS at a single chokepoint. System calls and access-control checks are where that decision occurs.</dd></div>
+    <div class="row"><dt>Authentication and authorization</dt><dd>The OS must determine on whose behalf code runs and what that identity may do. Users, credentials, tokens, and permissions encode the answer.</dd></div>
+  </div>
+
+  <div class="note note--key">
+    <div class="nt">Privilege as the target</div>
+    <p>An attacker who compromises an application is confined to that application's privileges. An attacker who compromises the kernel controls the machine: they can read any process's memory, assume any identity, conceal their presence from monitoring tools, and persist across reboots. For this reason, gaining code execution and escalating privilege to root, SYSTEM, or the kernel are treated as distinct phases of an intrusion.</p>
+  </div>
+
+  <p>The sections that follow examine each boundary in turn. A recurring theme is the control of transitions between privilege levels. Most OS security mechanisms exist to regulate movement toward higher privilege, and most attacks attempt to force that movement.</p>
+</section>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="sec-addr">0x01</span>
+    <div><p class="sec-kicker">Hardware foundation</p><h2>Privilege rings and CPU modes</h2></div>
+  </div>
+  <p class="lead">Software isolation depends on a hardware property: the CPU refuses to execute certain instructions unless it is in a privileged mode. This mechanism is the foundation of the operating system security model.</p>
+
+  <p>Every modern CPU operates at one of at least two <em class="term">privilege levels</em>. On x86 these are numbered as four <em class="term">protection rings</em>, from Ring 0 (most privileged) to Ring 3 (least). Operating systems use two of them:</p>
+
+  <div class="defs">
+    <div class="row"><dt>Ring 0, kernel mode</dt><dd>Also called supervisor or privileged mode. Code executes any instruction, accesses all physical memory, programs the MMU, communicates with hardware, and disables interrupts. The kernel and device drivers run here.</dd></div>
+    <div class="row"><dt>Ring 3, user mode</dt><dd>Where applications run. Privileged instructions are forbidden. Attempting one raises a fault handled by the kernel. User-mode code cannot access hardware or another process's memory except through the kernel.</dd></div>
+  </div>
+
+  <p>The CPU records the current ring in a register; on x86 this is the Current Privilege Level (CPL), held in the low bits of the code-segment selector. When user-mode code executes a <em class="term">privileged instruction</em>, such as writing a control register or performing raw port I/O, the processor does not comply. It raises a general protection fault and transfers control to a kernel handler. This hardware behavior is what makes user-mode confinement enforceable rather than advisory.</p>
+
+  <h3>Execution contexts below Ring 0</h3>
+  <p>The four-ring model omits several execution contexts introduced by later hardware. These sit at higher effective privilege than Ring 0, and a compromise in any of them is not visible to the operating system:</p>
+  <div class="defs">
+    <div class="row"><dt>Ring −1</dt><dd>Informal label for hypervisor or VMX root mode (Intel VT-x, AMD-V). A hypervisor runs here and can inspect a guest kernel executing in Ring 0. Hardware virtualization makes this efficient.</dd></div>
+    <div class="row"><dt>Ring −2</dt><dd>System Management Mode (SMM), a firmware execution mode entered by a System Management Interrupt. The OS cannot inspect it. SMM rootkits are difficult to detect and survive OS reinstallation.</dd></div>
+    <div class="row"><dt>Ring −3</dt><dd>Informal label for out-of-band management processors such as the Intel Management Engine and AMD PSP, which run on a separate microcontroller even when the main system is powered down.</dd></div>
+  </div>
+
+  <div class="note note--key">
+    <div class="nt">Property: trust flows downward</div>
+    <p>Security guarantees depend on all lower layers. Ring 3 relies on Ring 0; Ring 0 relies on the hypervisor; all layers rely on the firmware and management engine. An attacker who reaches a lower layer defeats every protection above it. This is why firmware and hardware attacks (section 0x0B) are valuable, and why reinstalling an operating system does not remediate a firmware-level compromise.</p>
+  </div>
+
+  <h3>Transitions between rings</h3>
+  <p>The only legitimate way for Ring 3 code to perform a Ring 0 operation is to request it from the kernel. This transition, a <em class="term">mode switch</em>, occurs on three events: a <em class="term">system call</em> (the program requests a service), an <em class="term">interrupt</em> (hardware signals the CPU), or an <em class="term">exception</em> (the program performs an illegal operation such as dividing by zero or accessing unmapped memory). In each case the CPU switches to Ring 0, changes to a trusted kernel stack, and jumps to a fixed kernel-defined entry point rather than to an address chosen by user code. The last property is a security requirement: user code may invoke the kernel only at predetermined entry points.</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="sec-addr">0x02</span>
+    <div><p class="sec-kicker">The privileged core</p><h2>The kernel and its attack surface</h2></div>
+  </div>
+  <p class="lead">The kernel is the program that runs in Ring 0. It allocates resources, schedules execution, and enforces every permission check. Because a kernel compromise removes all other boundaries simultaneously, it is the highest-value target on the machine.</p>
+
+  <p>The kernel is responsible for scheduling, memory management, the filesystem and I/O stack, the network stack, inter-process communication, and permission enforcement. It also contains <em class="term">device drivers</em>, which historically account for a large share of kernel vulnerabilities.</p>
+
+  <h3>Monolithic and microkernel designs</h3>
+  <div class="cols">
+    <div class="col-card">
+      <span class="tag">Monolithic</span>
+      <h4>Subsystems in Ring 0</h4>
+      <p>Linux, Windows, and macOS's XNU are effectively monolithic: scheduler, filesystems, network stack, and drivers run in kernel mode sharing one address space. Performance is high because subsystems call one another directly. A defect in any driver is a defect in the whole kernel.</p>
+    </div>
+    <div class="col-card">
+      <span class="tag">Microkernel</span>
+      <h4>Services in Ring 3</h4>
+      <p>seL4, QNX, and MINIX move drivers and filesystems into isolated user-mode servers, leaving only IPC, scheduling, and basic memory management in the kernel. A compromised driver cannot directly corrupt the kernel. The cost is IPC overhead. seL4 is formally verified.</p>
+    </div>
+  </div>
+
+  <p>Mainstream systems chose performance, so their kernels are large and their attack surface is dominated by drivers. On Windows this is exploited through a technique named <em class="term">Bring Your Own Vulnerable Driver</em> (BYOVD): an attacker loads a legitimately signed but defective driver to obtain code execution in Ring 0.</p>
+
+  <h3>Paths to kernel compromise</h3>
+  <ul>
+    <li><strong>Local privilege escalation (LPE).</strong> Code already running in Ring 3 exploits a kernel defect, typically a memory-corruption bug in a syscall handler, driver, or filesystem parser, to execute instructions in Ring 0.</li>
+    <li><strong>Malicious or vulnerable drivers.</strong> Loading kernel code directly. Modern operating systems require driver signing and maintain blocklists of known-vulnerable drivers.</li>
+    <li><strong>Remote kernel defects.</strong> A flaw in the network stack or a protocol parser reachable from the network. MS17-010 (EternalBlue) yielded remote kernel code execution with no prior access.</li>
+  </ul>
+
+  <div class="note note--defense">
+    <div class="nt">Mitigations</div>
+    <p>Kernels reduce this exposure with driver signature enforcement, kernel ASLR (KASLR), and the SMEP and SMAP CPU features, which prevent the kernel from executing or reading user-mode memory and eliminate a class of exploits that redirected the kernel to attacker-controlled data. Windows adds PatchGuard (Kernel Patch Protection), which detects modification of critical kernel structures, and HVCI (Hypervisor-protected Code Integrity), which uses the hypervisor to guarantee that only signed code executes in Ring 0.</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="sec-addr">0x03</span>
+    <div><p class="sec-kicker">The user/kernel interface</p><h2>System calls</h2></div>
+  </div>
+  <p class="lead">A system call is how a Ring 3 program requests a Ring 0 service. It is the controlled interface between untrusted applications and the kernel, and therefore both the basis of isolation and a primary attack surface.</p>
+
+  <p>Opening a file, sending a packet, and creating a process all require privileged operations that an application cannot perform itself. The program places a <em class="term">syscall number</em> and arguments in CPU registers and executes an instruction that traps into the kernel. The kernel validates the request against the caller's permissions, performs the work, and returns a result. Every effect a program has on the outside world passes through this set of a few hundred calls.</p>
+
+  <div class="listing">
+    <div class="code">
+      <div class="lbar">asm · x86-64 Linux · write(2)</div>
+<pre>    <span class="c">; A program cannot write to the terminal directly. It requests</span>
+    <span class="c">; syscall 1 (write) to send two bytes to stdout.</span>
+
+    mov  rax, <span class="p">1</span>          <span class="c">; syscall number: 1 = sys_write</span>
+    mov  rdi, <span class="p">1</span>          <span class="c">; arg0: file descriptor (1 = stdout)</span>
+    mov  rsi, <span class="k">msg</span>        <span class="c">; arg1: pointer to buffer</span>
+    mov  rdx, <span class="p">2</span>          <span class="c">; arg2: length in bytes</span>
+    <span class="r">syscall</span>             <span class="c">; trap: CPU switches from Ring 3 to Ring 0</span>
+    <span class="c">; the kernel validates the descriptor, the permissions, and the</span>
+    <span class="c">; pointer, performs the write, and returns the count in rax.</span></pre>
+    </div>
+    <figcaption><b>Listing 0x03.1.</b> Register-based syscall convention on x86-64 Linux: number in <code>rax</code>, arguments in <code>rdi, rsi, rdx, r10, r8, r9</code>, return value in <code>rax</code>.</figcaption>
+  </div>
+
+  <p>The <code>syscall</code> instruction is the current fast path; older code used the software interrupt <code>int 0x80</code>. Windows differs in a security-relevant way: its syscall numbers are undocumented and change between builds, so programs call through <code>ntdll.dll</code> rather than issuing syscalls directly. Malware that issues <em class="term">direct syscalls</em> does so to bypass security-product hooks placed in <code>ntdll</code>, evading monitoring that assumes the documented path.</p>
+
+  <h3>Why the boundary is a security chokepoint</h3>
+  <ul>
+    <li><strong>Validation.</strong> Every pointer passed to the kernel must be checked: that it references user memory, that it is mapped, and that it is adequately sized. Missing checks are a common kernel vulnerability class.</li>
+    <li><strong>Permission enforcement.</strong> Whether a process may open <code>/etc/shadow</code> is decided inside the <code>open</code> syscall, not by the calling program. The check cannot be skipped because the program never executes in Ring 0.</li>
+    <li><strong>Monitoring.</strong> Because meaningful actions are syscalls, observing syscalls is how endpoint detection tools, sandboxes, <code>strace</code>, Sysmon, and eBPF determine what a program does.</li>
+    <li><strong>Confinement.</strong> Restricting which syscalls a process may issue reduces what a compromised process can do. This is the basis of <code>seccomp</code> (section 0x09).</li>
+  </ul>
+
+  <div class="note note--attack">
+    <div class="nt">Attack class: TOCTOU at the boundary</div>
+    <p>The kernel acts on behalf of the user but with its own authority, which allows it to be misdirected. In a <em class="term">time-of-check-to-time-of-use</em> (TOCTOU) race, a program passes a path the kernel validates, then replaces that path with a symbolic link to a protected file after the check but before the operation. The kernel then operates on the substituted target with its own privileges. This is an instance of the confused-deputy problem. Correctly handling user-supplied references across the syscall boundary is a persistent source of kernel defects.</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="sec-addr">0x04</span>
+    <div><p class="sec-kicker">Isolation mechanics</p><h2>Virtual memory and process isolation</h2></div>
+  </div>
+  <p class="lead">Processes cannot access one another's memory because they cannot name it. Virtual memory gives each process a private address space, translated to physical memory by hardware on every access and enforced by the MMU.</p>
+
+  <p>Each process addresses memory from zero to the architecture's maximum as though it owned the machine. This is an abstraction maintained by the kernel and the CPU. When a program uses a <em class="term">virtual address</em>, the CPU's <em class="term">Memory Management Unit</em> (MMU) translates it to a <em class="term">physical address</em> in RAM on every access, using <em class="term">page tables</em> the kernel configured for that process.</p>
+
+  <p>Memory is managed in fixed-size <em class="term">pages</em>, typically 4&nbsp;KB. The page tables map each virtual page to a physical page or to nothing. Two properties make this the basis of isolation:</p>
+  <ul>
+    <li><strong>Separation.</strong> Each process has its own page tables. Virtual address <code>0x400000</code> in process A and the same address in process B refer to different physical memory. No virtual address process A can construct names process B's private memory.</li>
+    <li><strong>Permission bits.</strong> Each page-table entry carries flags: present, writable, user-accessible, and no-execute. The MMU enforces these on every access. A write to a read-only page, or an instruction fetch from a no-execute page, faults immediately.</li>
+  </ul>
+
+  <p>When a process accesses a virtual page that is not currently mapped, the MMU raises a <em class="term">page fault</em> and traps into the kernel. The kernel determines the cause and responds: load the page from disk (demand paging), allocate a zeroed page (first access), copy a shared page before writing (copy-on-write), or, if the address is invalid, terminate the process with a segmentation fault. Invalid accesses producing faults rather than proceeding is isolation being enforced continuously.</p>
+
+  <h3>Layout of a process address space</h3>
+  <figure>
+  <div class="memmap" aria-label="Process virtual address space, high addresses at top">
+    <div class="seg seg--k"><span><span class="a">0xFFFF…</span> <span class="n">Kernel space</span></span><span class="g">Ring 0 only</span></div>
+    <div class="seg seg--grow seg--u"><span><span class="a">grows down</span> <span class="n">Stack</span></span><span class="g">locals, return addresses</span></div>
+    <div class="seg seg--u"><span><span class="a">…</span> <span class="n">mmap / shared libraries</span></span><span class="g">libc, mapped files</span></div>
+    <div class="seg seg--grow seg--u"><span><span class="a">grows up</span> <span class="n">Heap</span></span><span class="g">malloc / new</span></div>
+    <div class="seg seg--u"><span><span class="a">…</span> <span class="n">BSS / Data</span></span><span class="g">global variables</span></div>
+    <div class="seg seg--u"><span><span class="a">0x400000</span> <span class="n">Text (code)</span></span><span class="g">read-only, executable</span></div>
+    <div class="seg seg--u"><span><span class="a">0x000000</span> <span class="n">Null guard page</span></span><span class="g">unmapped</span></div>
+  </div>
+  <figcaption><b>Figure 0x04.1.</b> Typical layout, high addresses at top. Code is read-only and executable; data regions are writable and non-executable; the lowest page is unmapped so a null-pointer dereference faults.</figcaption>
+  </figure>
+  <p>The layout encodes several security decisions. Code pages are read-only and executable. Data pages are writable and non-executable. The lowest page is left unmapped so that a null-pointer dereference faults rather than reading valid memory. The kernel is mapped into every process's high addresses but marked Ring 0 only, so user code can observe its presence while the MMU denies access.</p>
+
+  <div class="note note--hist">
+    <div class="nt">Case study: Meltdown and KPTI</div>
+    <p>Historically the kernel was mapped into every process for performance, relying on the ring permission bit to deny access. Meltdown (disclosed 2018) exploited speculative execution: the CPU speculatively read kernel memory before completing the permission check, and although the read was architecturally discarded, it left a measurable trace in the cache that an attacker could recover bit by bit. The mitigation, Kernel Page Table Isolation (KPTI), stops mapping most of the kernel into user page tables, at a measurable performance cost. Isolation depends on hardware behaving as specified, and Meltdown demonstrated that this assumption can fail.</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="sec-addr">0x05</span>
+    <div><p class="sec-kicker">Exploitation and mitigation</p><h2>Memory-corruption exploitation</h2></div>
+  </div>
+  <p class="lead">Many system compromises reduce to a program writing outside its intended bounds and an attacker converting that error into control of execution. Exploitation techniques and the mitigations against them developed in response to one another; presenting them in order is the clearest way to understand current defenses.</p>
+
+  <p>C and C++ delegate memory management to the programmer. When that management is incorrect (an off-by-one error, an unchecked <code>strcpy</code>, a use of freed memory), a program writes where it should not. The attacker's objective is <em class="term">control-flow hijacking</em>: causing the CPU to execute instructions of the attacker's choosing. The following sequence traces the exploitation and mitigation history.</p>
+
+  <h3>Stack buffer overflow</h3>
+  <p>A function stores its local buffer and its saved return address on the same stack. Overflowing the buffer overwrites the return address, and the function returns to an attacker-chosen location. The original technique, documented in 1996, placed attacker machine code (<em class="term">shellcode</em>) in the buffer and overwrote the return address to point back into it. The CPU then executed the shellcode at the program's privilege level.</p>
+
+  <div class="listing">
+    <div class="code">
+      <div class="lbar">c · unchecked copy into a fixed buffer</div>
+<pre>void handle(char *input) {
+    char buf[<span class="p">64</span>];
+    <span class="r">strcpy</span>(buf, input);   <span class="c">// no bounds check; input may exceed 64 bytes</span>
+}                          <span class="c">// return address sits just past buf[64]</span>
+
+<span class="c">// stack layout (toward higher addresses):</span>
+<span class="c">//   [ buf, 64 bytes ][ saved frame ptr ][ RETURN ADDRESS ]</span>
+<span class="c">// a copy longer than 64 bytes overwrites the return address,</span>
+<span class="c">// which sets the instruction pointer on function return.</span></pre>
+    </div>
+    <figcaption><b>Listing 0x05.1.</b> The canonical stack-overflow primitive.</figcaption>
+  </div>
+
+  <h3>Mitigation: non-executable memory (DEP / NX / W^X)</h3>
+  <p>The response marked writable memory non-executable and executable memory non-writable, a policy termed <em class="term">W^X</em> (write xor execute) and enforced by the MMU's no-execute bit. It is called DEP (Data Execution Prevention) on Windows and NX elsewhere. Shellcode placed on the stack no longer runs, because an instruction fetch from a no-execute page faults. Direct code injection ceased to be viable.</p>
+
+  <h3>Response: code reuse (return-to-libc and ROP)</h3>
+  <p>If new code cannot be injected, existing executable code can be reused. <em class="term">Return-oriented programming</em> (ROP) chains short sequences of existing instructions, called gadgets, each ending in a <code>ret</code>, by writing their addresses onto the stack. Each gadget performs a small operation and returns to the next. A sufficient set of gadgets is Turing-complete and uses only legitimately executable bytes, defeating NX. ROP remains central to current exploitation.</p>
+
+  <h3>Mitigation: ASLR</h3>
+  <p>ROP requires knowing gadget addresses. <em class="term">Address Space Layout Randomization</em> randomizes the base addresses of the stack, heap, libraries, and, with position-independent executables (PIE), the program image on each run. An exploit with hardcoded addresses then references the wrong locations and crashes the target. ASLR does not fix the underlying defect; it reduces the reliability of exploitation.</p>
+
+  <h3>Response: information disclosure</h3>
+  <p>ASLR is defeated by leaking one address. A separate defect (an out-of-bounds read, an uninitialized-memory disclosure, or a format-string flaw) that reveals a single runtime address lets the attacker compute a library's base and reconstruct the ROP chain. Modern exploits therefore typically chain two defects: an information disclosure to defeat ASLR and a memory-corruption primitive to hijack control.</p>
+
+  <h3>Additional mitigations</h3>
+  <div class="defs">
+    <div class="row"><dt>Stack canaries</dt><dd>A random value placed between local buffers and the return address. The function verifies it before returning; a linear overflow that reached the return address also altered the canary, so the program aborts. Also called stack cookies or <code>/GS</code> on MSVC.</dd></div>
+    <div class="row"><dt>RELRO</dt><dd>Makes the global offset table and related loader structures read-only after startup, closing a common target for converting a write into control flow.</dd></div>
+    <div class="row"><dt>CFI / CFG</dt><dd>Control-Flow Integrity records the set of valid indirect-call targets and checks them at runtime, so an indirect call or jump can only reach a legitimate function entry. Windows ships Control Flow Guard; Clang provides its own CFI.</dd></div>
+    <div class="row"><dt>CET / shadow stacks</dt><dd>Intel CET maintains a protected shadow stack of return addresses. On return, a mismatch between the normal and shadow return address faults, preventing ROP. Indirect Branch Tracking constrains indirect jumps similarly.</dd></div>
+  </div>
+
+  <h3>Heap corruption and use-after-free</h3>
+  <p>Not all corruption is stack-based. <em class="term">Use-after-free</em> (using a pointer to memory that has been freed and possibly reallocated) is the dominant vulnerability class in browsers and other large applications. Related classes include double-free, type confusion, and heap overflow. They are exploited by manipulating allocator behavior (heap grooming) so that a freed object is replaced with attacker-controlled data.</p>
+
+  <div class="note note--defense">
+    <div class="nt">Direction: memory-safe languages</div>
+    <p>Each mitigation above compensates for a language that permits the defect. Microsoft and Google have both reported that roughly 70% of their severe vulnerabilities are memory-safety issues, which memory-safe languages (Rust, Go, Swift, and managed runtimes) prevent by construction. Hardware efforts such as ARM Memory Tagging Extension (MTE) add a probabilistic safety layer for existing C and C++ code. The prevailing direction is to prevent the defect rather than add further runtime mitigations.</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="sec-addr">0x06</span>
+    <div><p class="sec-kicker">Authorization theory</p><h2>Access control models</h2></div>
+  </div>
+  <p class="lead">Isolation separates processes; access control determines what a process may reach when it legitimately interacts with shared resources. Three models underlie the specific mechanisms in every operating system.</p>
+
+  <div class="defs">
+    <div class="row"><dt>DAC</dt><dd><strong>Discretionary Access Control.</strong> The owner of a resource sets its permissions and may grant access at their discretion. Unix file permissions and Windows ACLs implement this. It is flexible but does not contain a subverted process: any process running as the owner can exercise or delegate the owner's access.</dd></div>
+    <div class="row"><dt>MAC</dt><dd><strong>Mandatory Access Control.</strong> A system-wide policy set by an administrator overrides individual owners. Subjects and objects carry labels, and the kernel enforces rules between them that no user, including root, can override at will. SELinux and AppArmor provide MAC on Linux and can confine a root process.</dd></div>
+    <div class="row"><dt>RBAC</dt><dd><strong>Role-Based Access Control.</strong> Permissions attach to roles, and users are assigned roles. It scales administration and underlies <code>sudo</code> policy, Windows groups, and cloud IAM. Attribute-Based Access Control (ABAC) generalizes this using arbitrary attributes and context.</dd></div>
+  </div>
+
+  <p>Two principles apply across all three models and account for much of practical hardening:</p>
+  <ul>
+    <li><strong>Least privilege.</strong> Each subject holds the minimum authority required for its task. A web server does not need the ability to load kernel modules.</li>
+    <li><strong>Privilege separation.</strong> A program is divided so that the component requiring high privilege is small, isolated, and briefly used, while the larger and more exposed logic runs unprivileged. OpenSSH's architecture is a standard example.</li>
+  </ul>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="sec-addr">0x07</span>
+    <div><p class="sec-kicker">Unix and Linux</p><h2>Permissions and privilege escalation</h2></div>
+  </div>
+  <p class="lead">On a Unix system, identity is a numeric UID, file permission is nine bits, and root is the user with UID 0. The distance between an attacker's initial foothold and full control is usually a single privilege-escalation step, and most such steps abuse the mechanisms below.</p>
+
+  <p>Each process runs with a UID and one or more GIDs. Files carry an owner, a group, and three permission triads (read, write, execute) for user, group, and other. UID 0 is root, historically exempt from permission checks. The kernel enforces these on each filesystem access within the relevant syscalls.</p>
+
+  <div class="listing">
+    <div class="code">
+      <div class="lbar">sh · permission bits and the setuid flag</div>
+<pre>$ ls -l /etc/shadow /usr/bin/passwd
+<span class="p">-rw-r-----</span> 1 root shadow  /etc/shadow      <span class="c"># only root may read the hashes</span>
+<span class="p">-rwsr-xr-x</span> 1 root root    /usr/bin/passwd  <span class="c"># 's' in place of 'x': setuid</span>
+
+<span class="c"># The setuid bit makes passwd run as its owner (root) rather than</span>
+<span class="c"># as the invoking user, so an ordinary user can update the</span>
+<span class="c"># root-owned shadow file. passwd restricts edits to the caller's</span>
+<span class="c"># own entry, so the elevated privilege is narrowly scoped.</span></pre>
+    </div>
+    <figcaption><b>Listing 0x07.1.</b> The <code>s</code> permission bit marks a setuid binary.</figcaption>
+  </div>
+
+  <h3>The setuid mechanism</h3>
+  <p>The <em class="term">setuid</em> bit is central to Unix privilege escalation. A setuid-root binary runs specific code as root on behalf of an unprivileged user, which is required by tools such as <code>passwd</code>, <code>sudo</code>, and <code>ping</code>. Each such binary is also a privilege boundary an attacker can target. If it contains a memory-corruption defect, mishandles an environment variable, trusts <code>PATH</code>, or can be induced to spawn a shell, the attacker obtains UID 0. Enumerating setuid binaries with <code>find / -perm -4000</code> is a standard step in both hardening and attack.</p>
+
+  <h3>Common escalation vectors</h3>
+  <div class="defs">
+    <div class="row"><dt>Vulnerable setuid binary</dt><dd>Exploiting a defect in a trusted program. CVE-2021-4034 (PwnKit, in pkexec) produced root from any account.</dd></div>
+    <div class="row"><dt>Kernel LPE</dt><dd>A defect in a syscall or driver, such as Dirty COW or Dirty Pipe, that allows unprivileged code to corrupt kernel memory or protected files and become root.</dd></div>
+    <div class="row"><dt>Sudo misconfiguration</dt><dd>A rule permitting a user to run one program as root where that program can spawn a shell, write files, or execute code (for example <code>vim</code>, <code>find</code>, or <code>tar</code>). The GTFOBins project catalogs these.</dd></div>
+    <div class="row"><dt>Weak file permissions</dt><dd>A world-writable script run by root via cron, a writable <code>PATH</code> directory, or an unquoted service path. The attacker places code that a privileged context later executes.</dd></div>
+    <div class="row"><dt>Excessive capabilities</dt><dd>A binary granted a capability such as <code>cap_setuid</code> (section 0x09) can be used to become root without the setuid bit.</dd></div>
+  </div>
+
+  <div class="note note--key">
+    <div class="nt">Intrusion structure</div>
+    <p>Most intrusions follow the same sequence: obtain code execution as a low-privileged user (a service account or a logged-in user), escalate to root or SYSTEM, then optionally escalate to the kernel to persist and conceal activity. The escalation steps are where OS security mechanisms are intended to hold and where misconfiguration removes them.</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="sec-addr">0x08</span>
+    <div><p class="sec-kicker">Windows internals</p><h2>The Windows security model</h2></div>
+  </div>
+  <p class="lead">Windows uses a more granular model than Unix. Identity is a variable-length SID, each process carries an access token describing its rights, and access to most objects is checked against a detailed access-control list. The additional expressiveness also increases the configuration surface.</p>
+
+  <h3>SIDs, tokens, and the access check</h3>
+  <p>Each security principal (user, group, computer, or service) is identified by a <em class="term">Security Identifier</em> (SID), for example <code>S-1-5-21-…-1001</code>. At logon, the LSASS process constructs an <em class="term">access token</em> containing the user's SID, group SIDs, and privileges. Every process the user launches carries a copy of this token, which constitutes its identity to the kernel.</p>
+  <p>Securable objects (files, registry keys, processes, named pipes, services) carry a <em class="term">security descriptor</em> containing a <em class="term">DACL</em>, an ordered list of access-control entries (ACEs) that allow or deny specific rights to specific SIDs. On an access request, the Security Reference Monitor evaluates the DACL against the token and grants the matching rights. A separate SACL governs auditing.</p>
+
+  <div class="defs">
+    <div class="row"><dt>Privileges</dt><dd>Token-carried rights distinct from object permissions, such as <code>SeDebugPrivilege</code> (open any process), <code>SeBackupPrivilege</code> (read any file), and <code>SeImpersonatePrivilege</code> (act under another token, the basis of the "Potato" escalation family for service accounts).</dd></div>
+    <div class="row"><dt>Integrity levels</dt><dd>A mandatory-integrity layer above DACLs. Objects and processes receive a level (Low, Medium, High, System). A Low-integrity process, such as a sandboxed browser tab, cannot write to higher-integrity objects even where the DACL would permit it.</dd></div>
+    <div class="row"><dt>UAC</dt><dd>User Account Control. Administrators run with a filtered Medium-integrity token for routine work and receive the full High-integrity token only after an elevation prompt. Microsoft states that UAC is not a security boundary, which is why UAC bypasses are fixed but not treated as full vulnerabilities.</dd></div>
+  </div>
+
+  <div class="note note--attack">
+    <div class="nt">Attack: credential theft from LSASS</div>
+    <p>Because LSASS performs authentication, its memory can contain credential material: NTLM hashes, Kerberos tickets, and, on older configurations, cleartext passwords. Tools such as Mimikatz read LSASS memory to extract these, enabling <em class="term">pass-the-hash</em> and <em class="term">pass-the-ticket</em> lateral movement without cracking a password. Defenses include Credential Guard, which isolates secrets in a hypervisor-protected enclave, LSASS run as a protected process (PPL), and hardened LSA configuration. Compromise of a single administrative host frequently leads to domain-wide compromise through this path.</p>
+  </div>
+
+  <h3>Kernel-mode protections</h3>
+  <p>On 64-bit Windows the kernel is protected by PatchGuard, which periodically verifies that critical kernel structures have not been modified; Driver Signature Enforcement; and, when enabled, HVCI (Memory Integrity), which uses the hypervisor to ensure no unsigned page is executable in kernel mode. With virtualization-based security (VBS), these move key trust decisions below Ring 0, where a kernel-mode compromise cannot readily reach them.</p>
+</section>
+
+<section id="s09">
+  <div class="sec-head">
+    <span class="sec-addr">0x09</span>
+    <div><p class="sec-kicker">Confinement primitives</p><h2>Linux hardening primitives</h2></div>
+  </div>
+  <p class="lead">The all-or-nothing authority of UID 0 is a liability. Modern Linux divides it into finer mechanisms: capabilities, namespaces, seccomp, and Linux Security Modules. These can confine a root process, and together they constitute the building blocks of containers.</p>
+
+  <h3>Capabilities</h3>
+  <p>Rather than a single omnipotent UID 0, Linux <em class="term">capabilities</em> divide root's authority into about 40 units. A process holds only those it requires: <code>CAP_NET_BIND_SERVICE</code> to bind a port below 1024, <code>CAP_NET_RAW</code> for raw sockets, <code>CAP_SYS_ADMIN</code> for a broad set of administrative operations. This allows a web server to bind a low port without also being able to load kernel modules or read arbitrary files. Two cautions apply: <code>CAP_SYS_ADMIN</code> is broad enough to approximate root, and several capabilities, including <code>CAP_SYS_MODULE</code> and <code>CAP_DAC_OVERRIDE</code>, can be escalated to full root, so granting them is close to granting root.</p>
+
+  <h3>Namespaces and cgroups</h3>
+  <p>A <em class="term">namespace</em> virtualizes a kernel resource so that processes inside it see an isolated view. The types include PID (process tree), NET (interfaces and routing), MNT (mounts), UTS (hostname), IPC, USER, and cgroup. <em class="term">Control groups</em> (cgroups) limit and account for resource use such as CPU, memory, and I/O. Namespaces, cgroups, and a restricted root filesystem together form a <em class="term">container</em>. A container is not a virtual machine: it is a set of kernel features sharing a single kernel with the host.</p>
+
+  <div class="note note--attack">
+    <div class="nt">Attack surface: the shared kernel</div>
+    <p>Every container on a host uses the same kernel. A single kernel vulnerability, or a misconfiguration such as a privileged container, a mounted Docker socket, or an over-broad capability, can allow a process to escape the container and reach the host and sibling containers. User namespaces allow unprivileged users to create containers, which supports least privilege but has historically expanded kernel attack surface by making formerly root-only code reachable by any user. A container's isolation boundary is weaker than a virtual machine's, and threat models should reflect this.</p>
+  </div>
+
+  <h3>seccomp</h3>
+  <p>Because a process's effects flow through syscalls (section 0x03), restricting the available syscalls restricts what a compromised process can do. <em class="term">seccomp-bpf</em> installs a filter that limits which syscalls a process may issue, and with which argument values, for the remainder of its lifetime. A media parser that needs only <code>read</code>, <code>write</code>, and <code>exit</code> can forbid the rest, so that even after full compromise the attacker cannot call <code>execve</code> or <code>socket</code>. seccomp underlies the sandboxes in Chrome, systemd, and container runtimes.</p>
+
+  <h3>Linux Security Modules</h3>
+  <p>The <em class="term">Linux Security Module</em> (LSM) framework adds mandatory access control on top of standard DAC checks. <em class="term">SELinux</em> labels every subject and object and enforces type-enforcement rules strict enough to confine a root process to the files and ports its role permits, containing a compromised daemon. <em class="term">AppArmor</em> uses a simpler path-based policy that is easier to author. In both cases the mandatory policy, which root cannot casually override, limits the effect of a compromise.</p>
+
+  <div class="note note--defense">
+    <div class="nt">Composition</div>
+    <p>These primitives combine. A service can run as a non-root user, hold only the two capabilities it needs, run within namespaces, be filtered by seccomp, and be confined by an SELinux policy. Each layer is imperfect alone; together they ensure that a defect in the service is not a defect in the whole system. A well-configured systemd unit or container sandbox applies exactly this layering.</p>
+  </div>
+</section>
+
+<section id="s0a">
+  <div class="sec-head">
+    <span class="sec-addr">0x0A</span>
+    <div><p class="sec-kicker">Identity and secrets</p><h2>Authentication and credential storage</h2></div>
+  </div>
+  <p class="lead">Before authorizing an action, the OS must authenticate the principal. How it stores and verifies credentials determines the impact of a stolen credential database.</p>
+
+  <p>An operating system must not store passwords in a recoverable form. It stores a <em class="term">salted hash</em>: the password processed through a deliberately slow one-way function together with a unique random salt. At login, the OS hashes the submitted password and compares. The salt ensures that identical passwords produce different hashes, defeating precomputed <em class="term">rainbow tables</em>, and the slowness raises the cost of brute-force search.</p>
+
+  <div class="listing">
+    <div class="code">
+      <div class="lbar">/etc/shadow · stored credential format</div>
+<pre>alice:<span class="p">$y$</span>j9T$<span class="k">Xf3n…salt…</span>$<span class="s">Rk8…hash…</span>:19700:0:99999:7:::
+      <span class="p">└┬┘</span>    <span class="k">└──┬──┘</span> <span class="s">└──┬──┘</span>
+     <span class="p">algorithm</span>  <span class="k">salt</span>     <span class="s">hash</span>
+
+<span class="c"># $y$       yescrypt (default on current distributions)</span>
+<span class="c"># $6$       SHA-512-crypt (older default)</span>
+<span class="c"># $2b$      bcrypt        $argon2id$  current recommended choice</span>
+<span class="c"># File mode 640, owner root:shadow; unreadable to normal users.</span>
+<span class="c"># If the file leaks, offline cracking begins against every hash.</span></pre>
+    </div>
+    <figcaption><b>Listing 0x0A.1.</b> Fields of a modern <code>/etc/shadow</code> entry.</figcaption>
+  </div>
+
+  <p>The choice of hash function is a security decision. Fast general-purpose hashes (MD5, plain SHA-256) are unsuitable for passwords precisely because a GPU can compute billions per second. Purpose-built <em class="term">password hashes</em> (bcrypt, scrypt, yescrypt, and Argon2id) are slow and memory-hard to resist GPU and ASIC attacks. On Linux, PAM (Pluggable Authentication Modules) coordinates hashing, password policy, lockout, and multi-factor authentication.</p>
+
+  <div class="cols">
+    <div class="col-card">
+      <span class="tag">Windows</span>
+      <h4>SAM, NTLM, Kerberos</h4>
+      <p>Local hashes reside in the SAM database; domain hashes in NTDS.dit on domain controllers. The legacy NT hash is unsalted MD4, which is fast to crack and usable directly in pass-the-hash without cracking. Kerberos is the domain authentication protocol; ticket-based attacks (Kerberoasting, Golden and Silver Tickets) target it.</p>
+    </div>
+    <div class="col-card">
+      <span class="tag">The offline threat</span>
+      <h4>Dependence on file permissions</h4>
+      <p>Every protection here assumes the attacker cannot read the hash storage. Once they can, via a backup, a volume shadow copy, a raw-disk read, or LSASS memory, runtime checks are irrelevant and the problem becomes offline cracking. This links authentication to storage encryption (0x0C) and file permissions (0x07).</p>
+    </div>
+  </div>
+
+  <div class="note note--key">
+    <div class="nt">Beyond passwords</div>
+    <p>OS authentication is moving away from shared secrets toward biometrics gated by secure hardware (Apple Secure Enclave, Windows Hello with the TPM), hardware security keys implementing FIDO2/WebAuthn, and certificate or smart-card logins. These share a hardware root of trust that the OS software cannot extract, moving the secret out of crackable storage into hardware designed to resist extraction.</p>
+  </div>
+</section>
+
+<section id="s0b">
+  <div class="sec-head">
+    <span class="sec-addr">0x0B</span>
+    <div><p class="sec-kicker">Below the OS</p><h2>Boot chain and firmware security</h2></div>
+  </div>
+  <p class="lead">The defenses described so far assume the running OS is the one the operator intends to run. Code that executes before the OS can compromise everything that follows. Boot security addresses the trustworthiness of the code that loads the kernel.</p>
+
+  <p>At power-on the CPU executes <em class="term">firmware</em> (UEFI, the successor to legacy BIOS) from a flash chip. Firmware initializes hardware, then loads the <em class="term">bootloader</em>, which loads the <em class="term">kernel</em>, which starts user space. Each stage transfers control to the next. An attacker who subverts an early stage controls all later stages and, because they run before the OS and its security tools, is difficult to detect from within the OS. Malware at these stages is named accordingly: a <em class="term">bootkit</em> in the bootloader, or a UEFI rootkit in firmware. Both can survive OS reinstallation and disk replacement.</p>
+
+  <h3>Secure Boot</h3>
+  <p><em class="term">Secure Boot</em> requires each stage to be cryptographically signed and verifies the signature before execution. The firmware holds trusted keys and refuses to run a bootloader not signed by a trusted authority; a Secure Boot-aware bootloader refuses an unsigned kernel; and so on. The result is a <em class="term">chain of trust</em> anchored in firmware. It verifies that code is the code the vendor signed, not that the code is free of defects, but it prevents a class of unsigned bootkits from loading.</p>
+
+  <h3>TPM and measured boot</h3>
+  <p>A <em class="term">Trusted Platform Module</em> (TPM) is a dedicated security chip that adds two capabilities. In <em class="term">measured boot</em>, each stage's hash is recorded into the TPM's tamper-resistant <em class="term">Platform Configuration Registers</em> (PCRs) by an operation that can extend but not rewind them, producing a fingerprint of exactly what booted. In <em class="term">sealing</em>, the TPM can bind a secret, such as a disk-encryption key, so that it is released only when the PCRs match a known-good state; a modified bootloader changes the PCRs and the key is not released. With <em class="term">remote attestation</em>, a machine can prove to a server which software it booted.</p>
+
+  <div class="note note--hist">
+    <div class="nt">Distinction: Secure Boot vs. measured boot</div>
+    <p>The two are complementary. Secure Boot is preventive and local: it refuses to execute unsigned code. Measured boot is evidentiary: it does not block execution but produces an unforgeable record of what ran, on which a later decision (release a key, admit a device to a network) can be based. Firmware attacks such as LoJax, the first UEFI rootkit found in the wild, and BlackLotus, which bypassed Secure Boot, motivate continued hardening of this layer and the migration of the ultimate root of trust into hardware the OS cannot rewrite.</p>
+  </div>
+</section>
+
+<section id="s0c">
+  <div class="sec-head">
+    <span class="sec-addr">0x0C</span>
+    <div><p class="sec-kicker">Data at rest</p><h2>Storage encryption</h2></div>
+  </div>
+  <p class="lead">Access control is enforced only while the OS is running. A disk removed and attached to another machine exposes its files, because permissions are metadata that the attacker's OS need not honor. Full-disk encryption addresses physical access to storage.</p>
+
+  <p><em class="term">Full-disk encryption</em> (FDE) encrypts an entire volume so that, without the key, its contents are indistinguishable from random data. LUKS/dm-crypt (Linux), BitLocker (Windows), and FileVault (macOS) operate transparently in the block layer beneath the filesystem, decrypting on read and encrypting on write. The relevant question is where the key resides and what releases it.</p>
+
+  <div class="defs">
+    <div class="row"><dt>Passphrase-derived</dt><dd>The key is derived from a passphrase through a slow key-derivation function. Security depends on passphrase strength. The user enters it at boot. No hardware dependency.</dd></div>
+    <div class="row"><dt>TPM-sealed</dt><dd>The key is sealed to the TPM and released automatically only if measured boot (0x0B) indicates an untampered system. Boot is seamless, but the key resides in memory once booted, and TPM-only mode has known attack avenues.</dd></div>
+    <div class="row"><dt>TPM plus PIN</dt><dd>Requires both the TPM's release and a user PIN, defeating attacks that rely on capturing an automatically released key. This is the recommended configuration for portable devices holding sensitive data.</dd></div>
+  </div>
+
+  <div class="note note--attack">
+    <div class="nt">Scope: FDE protects only a powered-off disk</div>
+    <p>Encryption at rest protects the at-rest state and nothing further. Two attacks illustrate the limits. In a <em class="term">cold-boot attack</em>, DRAM retains its contents for seconds after power loss; an attacker cools the RAM, reboots to a minimal OS, and reads the encryption key from memory. In an <em class="term">evil-maid attack</em>, brief physical access is used to modify the unencrypted bootloader to capture the passphrase on the next boot, which is the threat Secure Boot and measured boot address. Once the system is booted and unlocked, FDE provides no protection against a running-system compromise and does not substitute for the other layers.</p>
+  </div>
+</section>
+
+<section id="s0d">
+  <div class="sec-head">
+    <span class="sec-addr">0x0D</span>
+    <div><p class="sec-kicker">Post-exploitation</p><h2>Rootkits, injection, and persistence</h2></div>
+  </div>
+  <p class="lead">After gaining access, an attacker generally seeks to remain resident and undetected. The techniques for doing so reuse the OS mechanisms described earlier, viewed from the attacker's side.</p>
+
+  <h3>Code injection</h3>
+  <p>Rather than launch a new process, attackers often run code inside an existing trusted process. On Windows the common techniques are DLL injection (causing a target process to load a library, typically via <code>CreateRemoteThread</code> and <code>LoadLibrary</code>), <em class="term">process hollowing</em> (starting a legitimate process suspended, replacing its memory with malicious code so it appears legitimate in the process list), APC injection, and reflective loading (mapping a payload into memory with no file on disk). On Linux, <code>LD_PRELOAD</code> and <code>ptrace</code> serve comparable purposes. Each abuses the ability of one process to write another's memory, an ability the OS grants to debuggers and thus to holders of <code>SeDebugPrivilege</code> or root.</p>
+
+  <h3>Rootkits</h3>
+  <p>A <em class="term">rootkit</em> is malware whose function is to conceal itself and often other malware. Its location determines how difficult it is to detect and remove:</p>
+  <div class="defs">
+    <div class="row"><dt>User-mode rootkit</dt><dd>Hooks user-space API calls to filter what tools display, hiding files, processes, or connections. Easiest to implement and to detect, since a tool that queries the kernel directly bypasses the modified API.</dd></div>
+    <div class="row"><dt>Kernel-mode rootkit</dt><dd>Runs in Ring 0 and can alter what all tools observe, because it operates beneath them. Techniques include SSDT hooking (redirecting syscall handlers) and Direct Kernel Object Manipulation (DKOM), such as unlinking a process from the kernel's process list so it runs without appearing. Driver signing and PatchGuard target this class.</dd></div>
+    <div class="row"><dt>Firmware or hypervisor rootkit</dt><dd>Resides in UEFI, SMM, the management engine, or a malicious hypervisor beneath the OS (Rings −1 to −2 of section 0x01). Survives OS reinstallation and disk replacement and is not visible to OS-level defenses.</dd></div>
+  </div>
+
+  <h3>Persistence</h3>
+  <p>To retain access, malware attaches to a mechanism the OS runs automatically at startup or on a schedule. The options are OS-specific: on Windows, Run keys, scheduled tasks, services, WMI event subscriptions, and DLL search-order hijacking; on Linux, systemd units, cron jobs, <code>.bashrc</code>, udev rules, and kernel modules. Each is a legitimate OS feature repurposed as a re-execution hook, which is why defenders monitor these locations, enumerated in frameworks such as MITRE ATT&amp;CK.</p>
+
+  <div class="note note--defense">
+    <div class="nt">Principle: a compromised host cannot report reliably on itself</div>
+    <p>The deeper an attacker's access, the more completely they control what local tools observe. Reliable detection therefore increasingly originates outside the OS: hypervisor-based introspection, out-of-band network monitoring, TPM attestation, and immutable off-host logging. A confirmed kernel or firmware rootkit is generally remediated by reimaging from known-good media rather than by cleaning in place.</p>
+  </div>
+</section>
+
+<section id="s0e">
+  <div class="sec-head">
+    <span class="sec-addr">0x0E</span>
+    <div><p class="sec-kicker">Isolation at scale</p><h2>Virtualization and containers</h2></div>
+  </div>
+  <p class="lead">The same isolation principles that separate processes are applied one level higher to separate whole operating systems, and adjacently to separate applications at lower cost. The strength of each boundary differs, which matters for any threat model.</p>
+
+  <h3>Virtual machines</h3>
+  <p>A <em class="term">hypervisor</em> does for operating systems what the kernel does for processes: it gives each guest OS the appearance of dedicated hardware, mediated in a more-privileged layer (Ring −1). A <em class="term">Type 1</em> hypervisor (ESXi, Hyper-V, KVM) runs on bare metal; a <em class="term">Type 2</em> hypervisor (VirtualBox, VMware Workstation) runs on a host OS. Hardware virtualization (VT-x, AMD-V) makes this efficient by trapping sensitive guest operations directly to the hypervisor. Because each VM has its own kernel and the hypervisor's interface to the guest is comparatively narrow, isolation is strong: a full guest compromise is contained within the guest.</p>
+
+  <div class="note note--attack">
+    <div class="nt">Attack: VM escape</div>
+    <p>A <em class="term">VM escape</em> exploits a defect in the hypervisor or, more commonly, its emulated devices to execute code in the host or hypervisor, collapsing the boundary between tenants. VENOM, a defect in QEMU's virtual floppy controller, is the standard example. The emulated-device surface is the softest part of a hypervisor, so minimizing exposed virtual hardware is standard hardening.</p>
+  </div>
+
+  <h3>Containers</h3>
+  <p>As established in section 0x09, a container is namespaces, cgroups, and a confined root filesystem sharing the host's single kernel. Containers are lightweight because no second OS boots, but the isolation boundary is the kernel's full syscall interface rather than a hypervisor's narrow one. A kernel defect reachable from inside a container is a potential host compromise.</p>
+
+  <div class="cols">
+    <div class="col-card">
+      <span class="tag">Virtual machine</span>
+      <h4>Separate kernel</h4>
+      <p>Boundary is the hypervisor and its narrow device interface. Escape requires a hypervisor defect. Heavier and slower to start, with stronger isolation. Appropriate for hostile multi-tenancy.</p>
+    </div>
+    <div class="col-card">
+      <span class="tag">Container</span>
+      <h4>Shared kernel</h4>
+      <p>Boundary is the host kernel's full syscall surface. Escape requires a kernel defect or misconfiguration. Light and fast, with weaker isolation. Suitable for trusted workloads, higher-risk for hostile ones.</p>
+    </div>
+  </div>
+
+  <p>To combine container efficiency with stronger isolation, intermediate designs place each workload in a reduced-surface layer. gVisor interposes a user-space kernel to limit the host syscall surface a container can reach; Firecracker and Kata Containers wrap workloads in stripped-down virtual machines. Each represents an explicit trade-off along the isolation-versus-overhead axis.</p>
+</section>
+
+<section id="s0f">
+  <div class="sec-head">
+    <span class="sec-addr">0x0F</span>
+    <div><p class="sec-kicker">Visibility</p><h2>Logging, auditing, and forensics</h2></div>
+  </div>
+  <p class="lead">Prevention is not complete. When it fails, the ability to reconstruct events determines whether an incident is contained or undetected for an extended period. Logging is the control that provides value after a compromise.</p>
+
+  <p>Operating systems can record which principal performed which action, when, and on what object. On Linux, auditd captures syscall-level events against configurable rules, journald and syslog hold system and service logs, and eBPF-based tooling provides low-overhead runtime visibility. On Windows, the Event Log carries Security, System, and Application channels covering logon events, privilege use, and process creation, and Sysmon adds detailed process, network, and image-load telemetry.</p>
+
+  <h3>Forensic artifacts</h3>
+  <p>Beyond deliberate logs, ordinary OS operation records data used in investigations. On Windows: Prefetch (evidence a program executed), Shimcache and Amcache (execution history), the $MFT and USN journal (file creation and change records), registry hives, and shellbags (browsed folders). On Linux: shell histories, <code>/var/log</code>, systemd journals, and filesystem timestamps. Volatile memory holds additional state: a RAM capture can recover encryption keys, injected code, network connections, and process state that never reached disk, which is the basis of <em class="term">memory forensics</em> (for example, with Volatility).</p>
+
+  <div class="note note--defense">
+    <div class="nt">Practice: logs the attacker cannot alter</div>
+    <p>A capable intruder clears logs and disables auditing early, so logs stored only on the compromised host are only as trustworthy as the host. The countermeasures are architectural: ship logs off-host in real time to a system the attacker cannot reach, store them append-only or immutable, and alert on the event that indicates logging was stopped. A sudden absence of expected log volume is itself an indicator of compromise.</p>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sec-head">
+    <span class="sec-addr">0x10</span>
+    <div><p class="sec-kicker">Summary</p><h2>Hardening principles</h2></div>
+  </div>
+  <p class="lead">The mechanisms in this module reduce to a small set of principles applied consistently. Specific tools and vulnerabilities are instances of these patterns.</p>
+
+  <div class="defs">
+    <div class="row"><dt>Least privilege</dt><dd>Run every process, user, and service with the minimum authority required: non-root services, dropped capabilities, filtered syscalls, and scoped tokens. This is the highest-leverage practice, because it converts compromises into contained ones.</dd></div>
+    <div class="row"><dt>Reduce attack surface</dt><dd>Every running service, open port, installed package, and loaded driver can contain a defect. Disable, uninstall, and unmap what is not in use.</dd></div>
+    <div class="row"><dt>Defense in depth</dt><dd>Assume each layer can fail and stack independent layers so that no single failure is decisive: MMU isolation, ASLR, seccomp, MAC, and monitoring together.</dd></div>
+    <div class="row"><dt>Patch promptly</dt><dd>Most exploited kernel and privilege-escalation defects are known and fixed before they are widely exploited. Timely patching closes the exposure window.</dd></div>
+    <div class="row"><dt>Secure the boot chain</dt><dd>Enable Secure Boot, TPM-backed encryption, driver signing, and code-integrity enforcement, anchoring trust in hardware the OS cannot rewrite.</dd></div>
+    <div class="row"><dt>Assume breach and retain evidence</dt><dd>Design as though an attacker is already present: segment, monitor, and log off-host immutably so that a compromise can be detected, scoped, and remediated.</dd></div>
+  </div>
+
+  <div class="note note--key">
+    <div class="nt">Unifying observation</div>
+    <p>Most of this module concerns the control of movement between privilege levels: keeping Ring 3 out of Ring 0, one user out of another's memory, a container out of the host, and software out of firmware. Attackers work to move inward and downward; defenders work to make each boundary enforceable, layered, and observable. The location and enforcement of these boundaries is the organizing structure for the rest of the field.</p>
+  </div>
+</section>
+
+<div class="refs">
+  <p class="f-mono">End of Module 04 · Operating System Security</p>
+  <p>This module covered the hardware privilege model and mode switch, the kernel and its syscall interface, virtual-memory isolation and the exploitation techniques that target it, the access-control and authentication models above them, and the boot, encryption, persistence, virtualization, and logging layers surrounding them. Related modules in a full crash course: networking (extending these boundaries across machines), cryptography (the primitives the trust anchors rely on), and web and application security (where most initial footholds occur).</p>
+  <p class="f-mono" style="margin-top:16px;color:var(--line-2)">Reference material. Verify version-specific behavior and CVE details against current vendor and advisory documentation before operational use.</p>
+</div>
+
+</main>
+</div>
+
+<script>
+  const prog=document.getElementById('progress');
+  const links=[...document.querySelectorAll('.nav a')];
+  const secs=links.map(a=>document.getElementById(a.getAttribute('href').slice(1)));
+  function onScroll(){
+    const h=document.documentElement;
+    prog.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';
+    let idx=0;
+    secs.forEach((s,i)=>{if(s&&s.getBoundingClientRect().top<=140)idx=i;});
+    links.forEach((l,i)=>l.classList.toggle('active',i===idx));
+  }
+  document.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('load',onScroll);
+
+  const nav=document.getElementById('nav'),scrim=document.getElementById('scrim'),tog=document.getElementById('navToggle');
+  function closeNav(){nav.classList.remove('open');scrim.classList.remove('show')}
+  tog.addEventListener('click',()=>{nav.classList.toggle('open');scrim.classList.toggle('show')});
+  scrim.addEventListener('click',closeNav);
+
+  // In-page navigation handled in JS so sandboxed preview frames do not treat
+  // #anchor clicks as external navigation. The URL is never modified.
+  const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  nav.addEventListener('click',e=>{
+    const a=e.target.closest('a');
+    if(!a)return;
+    e.preventDefault();
+    const target=document.getElementById(a.getAttribute('href').slice(1));
+    if(target)target.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+    closeNav();
+  });
+</script>
+</body>
+</html>
