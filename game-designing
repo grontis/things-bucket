@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Loop: A Working Manual of Game Design and Development</title>
+<meta name="description" content="A structured reference on game design theory, game feel, level design, engine programming, production, and shipping.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E5E3DC;
+  --paper-hi:#F1EFEA;
+  --panel:#DBD8D0;
+  --ink:#15171B;
+  --ink-2:#565961;
+  --ink-3:#82848B;
+  --rule:#C5C1B7;
+  --rule-hard:#A8A399;
+  --violet:#3E24D6;
+  --violet-soft:#DFDAFA;
+  --amber:#9E6206;
+  --amber-soft:#F0E4C9;
+  --green:#1B6444;
+  --green-soft:#D6E6DC;
+
+  --f-display:"IBM Plex Sans Condensed","Helvetica Neue Condensed",Impact,"Segoe UI",sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --rail-w:264px;
+  --measure:70ch;
+  --gutter:250px;
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#15171B;
+    --paper-hi:#1D2027;
+    --panel:#222630;
+    --ink:#E4E2DC;
+    --ink-2:#A5A8B0;
+    --ink-3:#7E828B;
+    --rule:#333944;
+    --rule-hard:#4A5160;
+    --violet:#A99BFF;
+    --violet-soft:#241E4D;
+    --amber:#DBA košt;
+    --amber:#D9A busca;
+    --amber:#D5A051;
+    --amber-soft:#332A17;
+    --green:#69BF95;
+    --green-soft:#16301F;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:17px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ---------- shell ---------- */
+.shell{display:flex;align-items:flex-start;max-width:1560px;margin:0 auto}
+
+.rail{
+  width:var(--rail-w);
+  flex:0 0 var(--rail-w);
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border-right:1px solid var(--rule);
+  background:var(--paper-hi);
+  padding:22px 0 60px;
+}
+.rail-head{padding:0 20px 14px;border-bottom:1px solid var(--rule);margin-bottom:12px}
+.rail-title{font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.02em;margin:0 0 2px}
+.rail-sub{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0}
+.filter-wrap{padding:12px 20px 10px}
+#filter{
+  width:100%;padding:7px 9px;font-family:var(--f-mono);font-size:12px;
+  background:var(--paper);color:var(--ink);
+  border:1px solid var(--rule-hard);border-radius:0;
+}
+#filter:focus{outline:2px solid var(--violet);outline-offset:1px}
+#toc{list-style:none;margin:0;padding:0 12px}
+#toc li{margin:0}
+#toc a{
+  display:block;text-decoration:none;color:var(--ink-2);
+  padding:3px 8px;border-left:2px solid transparent;line-height:1.35;
+}
+#toc a:hover{color:var(--ink);background:var(--panel)}
+#toc .lvl-2 a{
+  font-family:var(--f-display);font-weight:700;font-size:12.5px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink);
+  margin-top:16px;padding-top:6px;border-top:1px solid var(--rule);
+}
+#toc .lvl-3 a{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.005em}
+#toc a.active{color:var(--violet);border-left-color:var(--violet);background:var(--violet-soft)}
+#toc a .n{color:var(--ink-3);margin-right:7px}
+#toc a.active .n{color:var(--violet)}
+
+.main{flex:1 1 auto;min-width:0;padding:0 clamp(20px,4vw,64px) 140px;}
+.wrap{max-width:calc(var(--measure) + var(--gutter));margin:0 auto}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 40px;border-bottom:2px solid var(--ink);max-width:calc(var(--measure) + var(--gutter));margin:0 auto}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);margin:0 0 18px}
+.hero h1{
+  font-family:var(--f-display);font-weight:700;
+  font-size:clamp(38px,6.4vw,74px);line-height:.98;letter-spacing:-.015em;
+  margin:0 0 18px;max-width:16ch;
+}
+.hero .deck{font-size:19px;max-width:60ch;color:var(--ink-2);margin:0 0 34px}
+.hero .deck strong{color:var(--ink);font-weight:600}
+
+.loopfig{display:flex;gap:34px;align-items:center;flex-wrap:wrap;margin:34px 0 8px}
+.loopfig svg{flex:0 0 auto;width:min(320px,86vw);height:auto}
+.loopfig .cap{flex:1 1 260px;min-width:240px;font-size:15.5px;color:var(--ink-2)}
+.loopfig .cap p{margin:0 0 12px}
+.orbit{animation:spin 6.5s linear infinite;transform-origin:150px 150px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.orbit{animation:none}}
+.ring{fill:none;stroke:var(--rule-hard);stroke-width:1.5}
+.node{fill:var(--paper-hi);stroke:var(--ink);stroke-width:1.5}
+.nodetext{font-family:var(--f-mono);font-size:9.5px;fill:var(--ink);letter-spacing:.04em;text-anchor:middle}
+.centtext{font-family:var(--f-display);font-weight:700;font-size:15px;fill:var(--ink);text-anchor:middle;letter-spacing:.04em}
+.centsub{font-family:var(--f-mono);font-size:9px;fill:var(--ink-3);text-anchor:middle;letter-spacing:.1em}
+
+/* ---------- frame budget widget ---------- */
+.budget{margin:46px 0 8px;border:1px solid var(--rule-hard);background:var(--paper-hi);padding:18px 18px 14px}
+.budget h2{font-family:var(--f-display);font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 3px;font-weight:700}
+.budget .sub{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin:0 0 16px;letter-spacing:.03em}
+.bars{display:flex;width:100%;height:46px;border:1px solid var(--ink);background:var(--paper)}
+.bars button{
+  border:0;border-right:1px solid var(--ink);padding:0;margin:0;cursor:pointer;
+  background:var(--violet-soft);position:relative;overflow:hidden;
+  font-family:var(--f-mono);font-size:9px;color:var(--ink);
+}
+.bars button:last-child{border-right:0;background:repeating-linear-gradient(45deg,var(--panel),var(--panel) 4px,var(--paper) 4px,var(--paper) 8px)}
+.bars button:hover,.bars button:focus-visible{background:var(--violet);color:var(--paper-hi);outline:none}
+.bars button:last-child:hover,.bars button:last-child:focus-visible{background:var(--violet)}
+.bars button.sel{background:var(--violet);color:var(--paper-hi)}
+.readout{display:flex;gap:14px;margin-top:12px;align-items:baseline;min-height:52px;flex-wrap:wrap}
+.readout .ms{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1;color:var(--violet);flex:0 0 auto}
+.readout .txt{flex:1 1 300px;font-size:14.5px;color:var(--ink-2)}
+.readout .txt b{color:var(--ink);font-family:var(--f-display);font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:12.5px;display:block}
+
+/* ---------- article ---------- */
+article{padding-top:8px}
+.part{
+  margin:96px 0 0;padding-top:26px;border-top:2px solid var(--ink);
+  max-width:calc(var(--measure) + var(--gutter));
+}
+.part-num{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);margin:0 0 10px}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,4.4vw,44px);line-height:1.02;letter-spacing:-.01em;margin:0 0 14px}
+.part-intro{font-size:18px;color:var(--ink-2);max-width:62ch;margin:0 0 10px}
+
+section{padding:34px 0 0;max-width:calc(var(--measure) + var(--gutter))}
+h3{
+  font-family:var(--f-display);font-weight:700;font-size:23px;line-height:1.15;
+  margin:0 0 12px;letter-spacing:0;max-width:var(--measure);
+}
+h3 .sn{font-family:var(--f-mono);font-size:13px;color:var(--violet);margin-right:10px;font-weight:500}
+h4{
+  font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-2);margin:26px 0 8px;max-width:var(--measure);
+}
+p,ul,ol,dl,pre,table,figure{max-width:var(--measure)}
+p{margin:0 0 15px}
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin:0 0 7px}
+li::marker{color:var(--ink-3)}
+strong{font-weight:600}
+em{font-style:italic}
+b.term{font-weight:600;font-family:var(--f-display);letter-spacing:.01em}
+a{color:var(--violet)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--panel);padding:1px 4px;border-radius:2px}
+pre{
+  font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--paper-hi);
+  border:1px solid var(--rule-hard);border-left:3px solid var(--violet);
+  padding:14px 16px;overflow-x:auto;margin:0 0 18px;
+}
+pre code{background:none;padding:0;font-size:inherit}
+
+dl.gloss{margin:0 0 18px;border-top:1px solid var(--rule)}
+dl.gloss dt{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.03em;padding-top:10px}
+dl.gloss dd{margin:2px 0 10px;padding-bottom:10px;border-bottom:1px solid var(--rule);color:var(--ink-2);font-size:15.5px}
+
+table{border-collapse:collapse;width:100%;margin:0 0 20px;font-size:14.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--f-display);font-weight:700;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--ink)}
+td:first-child{font-family:var(--f-mono);font-size:12.5px;white-space:nowrap;padding-right:16px}
+tbody tr:hover{background:var(--paper-hi)}
+
+/* ---------- callouts ---------- */
+.box{margin:0 0 20px;padding:14px 16px;border:1px solid var(--rule-hard);background:var(--paper-hi);max-width:var(--measure)}
+.box .lab{font-family:var(--f-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:7px}
+.box p:last-child,.box ul:last-child,.box ol:last-child{margin-bottom:0}
+.box.rule{border-left:3px solid var(--violet);background:var(--violet-soft)}
+.box.rule .lab{color:var(--violet)}
+.box.fail{border-left:3px solid var(--amber);background:var(--amber-soft)}
+.box.fail .lab{color:var(--amber)}
+.box.ex{border-left:3px solid var(--green);background:var(--green-soft)}
+.box.ex .lab{color:var(--green)}
+.box.num{border-left:3px solid var(--ink);background:var(--panel);font-family:var(--f-mono);font-size:13px;line-height:1.6}
+.box.num .lab{color:var(--ink)}
+.box.num ul{padding-left:18px}
+
+/* ---------- margin notes ---------- */
+aside.mn{
+  float:right;clear:right;width:210px;margin:4px -240px 16px 30px;
+  font-family:var(--f-mono);font-size:11.5px;line-height:1.5;color:var(--ink-2);
+  border-top:2px solid var(--ink);padding-top:7px;
+}
+aside.mn b{display:block;font-family:var(--f-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin-bottom:4px}
+@media (max-width:1180px){
+  aside.mn{float:none;width:auto;margin:0 0 18px;max-width:var(--measure);
+    border-top:1px solid var(--rule-hard);border-left:3px solid var(--ink);padding:8px 0 8px 12px;}
+}
+
+/* ---------- misc ---------- */
+.toplink{
+  position:fixed;right:18px;bottom:18px;z-index:40;
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ink);color:var(--paper);text-decoration:none;padding:9px 12px;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.toplink.on{opacity:1;pointer-events:auto}
+.railbtn{
+  display:none;position:fixed;left:12px;top:12px;z-index:50;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ink);color:var(--paper);border:0;padding:9px 12px;cursor:pointer;
+}
+.end{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink);font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.03em;max-width:var(--measure)}
+
+@media (max-width:900px){
+  body{font-size:16.5px}
+  .rail{position:fixed;left:0;top:0;z-index:45;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 0 100vmax rgba(0,0,0,0);}
+  .rail.open{transform:translateX(0)}
+  .railbtn{display:block}
+  .main{padding-top:52px}
+  aside.mn{margin-left:0}
+}
+@media (prefers-reduced-motion: reduce){.rail{transition:none}}
+
+@media print{
+  .rail,.railbtn,.toplink,.budget{display:none}
+  body{background:#fff;color:#000;font-size:10.5pt}
+  .main{padding:0}
+  .part{break-before:page}
+  aside.mn{float:none;width:auto;margin:0 0 12px}
+}
+</style>
+</head>
+<body>
+
+<button class="railbtn" id="railbtn" aria-expanded="false" aria-controls="rail">Contents</button>
+
+<div class="shell">
+
+<nav class="rail" id="rail" aria-label="Contents">
+  <div class="rail-head">
+    <p class="rail-title">The Loop</p>
+    <p class="rail-sub">Game design and development</p>
+  </div>
+  <div class="filter-wrap">
+    <label for="filter" class="visually-hidden" style="position:absolute;left:-9999px">Filter contents</label>
+    <input id="filter" type="search" placeholder="filter sections..." autocomplete="off">
+  </div>
+  <ul id="toc"><li class="lvl-3"><a href="#top">Enable JavaScript for contents</a></li></ul>
+</nav>
+
+<div class="main" id="top">
+
+<header class="hero">
+  <p class="eyebrow">A working manual, revised August 2026</p>
+  <h1>Everything is a loop</h1>
+  <p class="deck">A game is two loops running at once. One runs inside the machine, sixty times a second, taking input and producing pixels and sound. The other runs inside the player, at the speed of thought, taking feedback and producing intent. <strong>Design is the craft of shaping the second loop. Programming is the craft of making the first one fast, correct, and honest.</strong> This document covers both, from first principles to the details that only show up in production.</p>
+
+  <div class="loopfig">
+    <svg viewBox="0 0 300 300" role="img" aria-label="Diagram of the player feedback loop: intent, input, simulation, feedback, revised mental model">
+      <circle class="ring" cx="150" cy="150" r="104"/>
+      <text class="centtext" x="150" y="146">THE LOOP</text>
+      <text class="centsub" x="150" y="164">60 TIMES / SECOND</text>
+      <g class="orbit"><circle cx="150" cy="46" r="5.5" fill="var(--violet)"/></g>
+      <g>
+        <circle class="node" cx="150" cy="46" r="26"/><text class="nodetext" x="150" y="44">MENTAL</text><text class="nodetext" x="150" y="54">MODEL</text>
+        <circle class="node" cx="249" cy="118" r="26"/><text class="nodetext" x="249" y="121">INTENT</text>
+        <circle class="node" cx="211" cy="234" r="26"/><text class="nodetext" x="211" y="237">INPUT</text>
+        <circle class="node" cx="89" cy="234" r="26"/><text class="nodetext" x="89" y="232">SIMU-</text><text class="nodetext" x="89" y="242">LATION</text>
+        <circle class="node" cx="51" cy="118" r="26"/><text class="nodetext" x="51" y="116">FEED-</text><text class="nodetext" x="51" y="126">BACK</text>
+      </g>
+    </svg>
+    <div class="cap">
+      <p>Every problem in this manual is a defect somewhere in this circle. Unresponsive controls break the input arc. An unreadable HUD breaks feedback. An unfair difficulty spike breaks the mental model. A frame time spike breaks all five at once.</p>
+      <p>When a game is not fun and nobody can say why, walk the loop one arc at a time and ask which arc is lying to the player.</p>
+    </div>
+  </div>
+
+  <div class="budget">
+    <h2>The frame budget</h2>
+    <p class="sub">60 Hz target = 16.67 ms per frame. Illustrative split for a mid-size 3D game. Select a segment.</p>
+    <div class="bars" id="bars" role="group" aria-label="Frame budget segments"></div>
+    <div class="readout" id="readout">
+      <div class="ms" id="ms">16.67 ms</div>
+      <div class="txt"><b>Total budget</b>Everything the CPU must finish before the frame is handed to the GPU. Miss it and the player sees a stutter, not a slideshow. Consistency matters more than the average.</div>
+    </div>
+  </div>
+</header>
+
+<article>
